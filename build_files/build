@@ -1,0 +1,155 @@
+#!/bin/bash
+
+set -ouex pipefail
+
+# Repository setup
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list
+sed -i 's/main/main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources
+tee /etc/apt/sources.list.d/debian-backports.sources > /dev/null <<EOF
+Types: deb deb-src
+URIs: http://deb.debian.org/debian
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")-backports
+Components: main non-free-firmware
+Enabled: yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+EOF
+
+curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc
+tee /etc/apt/sources.list.d/zabbly-incus-stable.sources <<EOF
+Enabled: yes
+Types: deb
+URIs: https://pkgs.zabbly.com/incus/stable
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: main
+Signed-By: /etc/apt/keyrings/zabbly.asc
+EOF
+
+# Initial update
+apt-get update -y
+
+# Install Backports Kernel and Firmware
+codename=$( . /etc/os-release && echo "$VERSION_CODENAME" )
+apt-get purge -y \
+  "linux-image-$(dpkg --print-architecture)"
+rm -rf /usr/lib/modules/*
+echo "firmware-ipw2x00 firmware-ipw2x00/license/accepted boolean true" | debconf-set-selections
+echo "firmware-ivtv firmware-ivtv/license/accepted boolean true" | debconf-set-selections
+apt-get install -y -t "${codename}-backports" \
+  "linux-image-$(dpkg --print-architecture)" \
+	atmel-firmware \
+	bluez-firmware \
+	dahdi-firmware-nonfree \
+	firmware-amd-graphics \
+	firmware-ast \
+	firmware-ath9k-htc \
+	firmware-atheros \
+	firmware-bnx2 \
+	firmware-bnx2x \
+	firmware-brcm80211 \
+	firmware-carl9170 \
+	firmware-cavium \
+	firmware-cirrus \
+	firmware-intel-graphics \
+	firmware-intel-misc \
+	firmware-intel-sound \
+	firmware-ipw2x00 \
+	firmware-ivtv \
+	firmware-iwlwifi \
+	firmware-libertas \
+	firmware-linux-free \
+	firmware-linux-nonfree \
+	firmware-linux \
+	firmware-marvell-prestera \
+	firmware-mediatek \
+	firmware-misc-nonfree \
+	firmware-myricom \
+	firmware-netronome \
+	firmware-netxen \
+	firmware-nvidia-graphics \
+	firmware-qlogic \
+	firmware-realtek \
+	firmware-siano \
+	firmware-sof-signed \
+	firmware-zd1211
+
+# Install Common Packages
+apt-get install -y \
+	duperemove \
+	fwupd \
+	hdparm \
+	less \
+	locales \
+	man-db \
+	nano \
+	nfs-common \
+	nfs-kernel-server \
+  	pipewire \
+	pciutils \
+	pcp-zeroconf \
+	openssh-client \
+	openssh-server \
+	qemu-guest-agent \
+	samba \
+	smartmontools \
+	smbclient \
+	tmux \
+	tuned \
+	tuned-ppd \
+	usbutils \
+	vim \
+	wireguard-tools \
+	xdg-dbus-proxy \
+	xdg-user-dirs
+
+# Docker
+apt-get install -y \
+	docker-ce \
+	docker-ce-cli \
+	containerd.io \
+	docker-buildx-plugin \
+	docker-compose-plugin
+
+# Incus
+apt-get install -y \
+	dnsmasq-base \
+	ovmf \
+	qemu-kvm \
+	qemu-utils \
+	qemu-system-gui \
+	qemu-system-modules-spice \
+	ipxe-qemu \
+	genisoimage \
+	virt-viewer \
+	incus \
+	incus-extra \
+	incus-ui-canonical
+
+
+# Get package list
+mkdir -p /usr/share/snowdrift
+apt list --installed > /usr/share/snowdrift/server-packages.txt
+
+# disable services
+systemctl disable nfs-server
+systemctl disable nmbd
+systemctl disable samba-ad-dc
+systemctl disable smbd
+systemctl disable winbind
+systemctl disable docker
+
+# Update os-release info
+sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Snowdrift Linux"/' /usr/lib/os-release
+sed -i 's/^NAME=.*/NAME="Snowdrift Linux"/' /usr/lib/os-release
+sed -i 's/^ID=.*/ID="snowdrift"/' /usr/lib/os-release
+echo "ID_LIKE=debian" >> /usr/lib/os-release
+
+# Update build information in os-release
+sed -i "s/^BUILD_ID=.*/BUILD_ID=\"$BUILD_ID\"/" /usr/lib/os-release
+
+# Move Incus to /usr/share/factory/opt/incus
+# so we can symlink /opt/incus to it via tmpfiles.d
+# and avoid issues with /var/opt being mounted on top
+mkdir -p "/usr/share/factory/opt/incus"
+mv /opt/incus /usr/share/factory/opt/
