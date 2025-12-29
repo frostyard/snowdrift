@@ -26,8 +26,11 @@ Components: main
 Signed-By: /etc/apt/keyrings/zabbly.asc
 EOF
 
+
 # Initial update
 apt-get update -y
+
+apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
 
 # Install Backports Kernel and Firmware
 codename=$( . /etc/os-release && echo "$VERSION_CODENAME" )
@@ -126,6 +129,9 @@ apt-get install -y \
 	incus-extra \
 	incus-ui-canonical
 
+# Caddy
+apt-get install -y \
+	caddy
 
 # Get package list
 mkdir -p /usr/share/snowdrift
@@ -138,6 +144,7 @@ systemctl disable samba-ad-dc
 systemctl disable smbd
 systemctl disable winbind
 systemctl disable docker
+systemctl disable caddy
 
 # Update os-release info
 sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Snowdrift Linux"/' /usr/lib/os-release
