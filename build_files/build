@@ -40,7 +40,10 @@ rm -rf /usr/lib/modules/*
 echo "firmware-ipw2x00 firmware-ipw2x00/license/accepted boolean true" | debconf-set-selections
 echo "firmware-ivtv firmware-ivtv/license/accepted boolean true" | debconf-set-selections
 apt-get install -y -t "${codename}-backports" \
-  "linux-image-$(dpkg --print-architecture)" \
+	dracut \
+	linux-cpupower \
+	"linux-image-$(dpkg --print-architecture)" \
+	linux-perf \
 	atmel-firmware \
 	bluez-firmware \
 	dahdi-firmware-nonfree \
@@ -79,32 +82,50 @@ apt-get install -y -t "${codename}-backports" \
 
 # Install Common Packages
 apt-get install -y \
+	bc \
+	buildah \
+	bzip2 \
+	bzip2-doc \
+	cpio \
 	duperemove \
+	file \
 	fwupd \
 	hdparm \
+	incus-agent \
+	jq \
 	less \
 	locales \
 	man-db \
 	nano \
 	nfs-common \
 	nfs-kernel-server \
-  	pipewire \
+  pipewire \
 	pciutils \
 	pcp-zeroconf \
+	picocom \
+	podman \
+	psmisc \
 	openssh-client \
 	openssh-server \
 	qemu-guest-agent \
 	samba \
 	smartmontools \
 	smbclient \
+	skopeo \
+	socat \
+	tar \
 	tmux \
 	tuned \
 	tuned-ppd \
+	unzip \
+	usbip \
 	usbutils \
 	vim \
 	wireguard-tools \
 	xdg-dbus-proxy \
-	xdg-user-dirs
+	xdg-user-dirs \
+	zip \
+	zstd
 
 # Docker
 apt-get install -y \
